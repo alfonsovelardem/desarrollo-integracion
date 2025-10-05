@@ -5,41 +5,43 @@ Integración que permita la comunicación entre dos sistemas diferentes
 
 El proceso se centraliza en la Capa de Integración, el cual maneja la seguridad, la trazabilidad y la traducción de protocolos y formatos.
 
+```text
 [SISTEMA A]
   (Solicitud SOAP/XML)
         ↓
 [ADAPTADOR DE SERVICIO]
         ↓
-(1) 🔑  Validar Autenticación (EXTRAER_HEADER)
+(1) Validar Autenticación (EXTRAER_HEADER)
   → SI FALLA: Detener y responder con ERROR 401 (Fault SOAP)
         ↓
 (2)  Extraer Cuerpo XML (EXTRAER_BODY_SOAP)
         ↓
-(3) 🚨  Validar Esquema XSD
+(3) Validar Esquema XSD
   → SI FALLA: Detener y responder con ERROR 400 (Fault SOAP)
         ↓
-(4) 🔄  Parsear XML a Objeto (PARSE_XML_A_OBJETO)
+(4) Parsear XML a Objeto (PARSE_XML_A_OBJETO)
         ↓
-(5) 🔄  Transformación de Datos (Objeto → JSON Payload)
+(5) Transformación de Datos (Objeto → JSON Payload)
         ↓
-(6) 🛣️  Serializar a JSON (SERIALIZAR_A_JSON)
+(6) Serializar a JSON (SERIALIZAR_A_JSON)
         ↓
-(7) 🛣️  Llamar Servicio REST (LLAMAR_SERVICIO_REST)
+(7) Llamar Servicio REST (LLAMAR_SERVICIO_REST)
         ↓
 [SISTEMA B]
   (Endpoint POST /api/pedidos - Respuesta JSON)
         ↓
 [ADAPTADOR DE SERVICIO]
         ↓
-(8) 🚨  Verificar Status de Respuesta (Status >= 400)
+(8) Verificar Status de Respuesta (Status >= 400)
   → SI FALLA: Detener y responder con ERROR Propagado (Fault SOAP)
         ↓
-(9) 🔄  Transformar Respuesta JSON a XML/SOAP (CREAR_RESPUESTA_SOAP_EXITOSA)
+(9) Transformar Respuesta JSON a XML/SOAP (CREAR_RESPUESTA_SOAP_EXITOSA)
         ↓
-(10) 🛣️  Responder
+(10) Responder
         ↓
 [SISTEMA A]
   (Respuesta SOAP/XML Exitosa)
+```
 
 ### Manejo de Errores
 
