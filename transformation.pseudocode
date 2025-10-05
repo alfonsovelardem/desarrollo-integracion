@@ -1,0 +1,64 @@
+FUNCION procesar_solicitud_soap(solicitud_xml)
+    
+    SI NO AUTENTICAR_TOKEN(EXTRAER_HEADER(solicitud_xml)) ENTONCES
+        // Fallo en Autenticación
+        LOG_ERROR("Acceso no autorizado: Token inválido o ausente")
+        LANZAR_ERROR_SOAP(401, "Acceso no autorizado")
+        RETORNAR // Sale del proceso
+    FIN SI
+    
+    // Inicio de Trazabilidad
+    LOG_INICIO(GENERAR_UUID_CORRELACION(), "Procesando solicitud SOAP")
+
+    payload_xml = EXTRAER_BODY_SOAP(solicitud_xml)
+    
+    SI NO VALIDAR_ESQUEMA_XSD(payload_xml) ENTONCES
+        // Fallo en Validación de Esquema
+        LOG_ERROR("Esquema XML de entrada inválido")
+        LANZAR_ERROR_SOAP(400, "Estructura XML de entrada inválida")
+        RETORNAR 
+    FIN SI
+    
+    // Convierte el XML a un objeto
+    estructura_intermedia = PARSE_XML_A_OBJETO(payload_xml)
+
+    //mapeo
+    json_payload = {}
+    lista_items = []
+    
+    // renombrar campo de cliente
+    json_payload.customerId = estructura_intermedia.clienteId 
+    
+    // Mapeo
+    PARA CADA detalle EN estructura_intermedia.detalle HACER
+        item = {}
+        item.sku = detalle.itemCodigo
+        item.quantity = detalle.cantidad
+        AGREGAR_A_LISTA(lista_items, item)
+    FIN PARA
+    
+    json_payload.items = lista_items
+
+    //ENRUTAMIENTO
+    respuesta_sistema_B = LLAMAR_SERVICIO_REST(
+        URL="http://sistema-b/api/pedidos",
+        METODO="POST",
+        HEADERS={ "Content-Type": "application/json" },
+        BODY=SERIALIZAR_A_JSON(json_payload) // Transforma el objeto a JSON
+    )
+
+    // manejo de errors
+    SI respuesta_sistema_B.status ES MAYOR O IGUAL A 400 ENTONCES
+        LOG_ERROR("Fallo en Sistema B. Status: " + respuesta_sistema_B.status)
+        LANZAR_ERROR_SOAP(respuesta_sistema_B.status, respuesta_sistema_B.body)
+        RETORNAR
+    FIN SI
+    
+    // transformar datos
+    respuesta_xml_final = CREAR_RESPUESTA_SOAP_EXITOSA(respuesta_sistema_B.body)
+    
+    LOG_FIN(ID_CORRELACION(), "Proceso exitoso")
+    
+    RETORNAR respuesta_xml_final
+
+FIN FUNCION
